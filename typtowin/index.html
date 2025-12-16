@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TypToWin - Typing Game</title>
+  <style>
+    * { box-sizing: border-box; font-family: Arial, sans-serif; }
+    body { margin:0; background:#0b1020; color:#fff; overflow:hidden; }
+    #topbar { position:fixed; top:0; left:0; right:0; height:56px; background:#12183a; display:flex; justify-content:space-between; align-items:center; padding:0 16px; z-index:10; }
+    #game { position:absolute; top:56px; left:0; right:0; bottom:90px; background:#060912; overflow:hidden; }
+    .enemy { position:absolute; padding:8px 14px; background:#ff3b3b; border-radius:999px; font-weight:bold; }
+    #inputBox { position:fixed; bottom:14px; left:50%; transform:translateX(-50%); width:90%; max-width:360px; padding:14px; font-size:18px; border-radius:12px; border:none; outline:none; }
+    #startScreen, #gameOver { position:fixed; inset:0; background:rgba(0,0,0,.85); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:50; }
+    #gameOver { display:none; }
+    button { padding:14px 28px; font-size:18px; border:none; border-radius:999px; cursor:pointer; }
+    #adSpace { position:fixed; bottom:0; left:0; right:0; height:70px; background:#0f1430; display:flex; align-items:center; justify-content:center; color:#aaa; }
+  </style>
+</head>
+<body>
+
+<div id="topbar">
+  <div><b>TypToWin</b> | Score: <span id="score">0</span></div>
+  <div>Speed: <span id="speed">1</span></div>
+</div>
+
+<div id="game"></div>
+<input id="inputBox" placeholder="Type the word" disabled />
+<div id="adSpace">Ad Space</div>
+
+<div id="startScreen">
+  <h1>TypToWin</h1>
+  <button id="startBtn" type="button" onclick="startGame()">Start Game</button>
+</div>
+
+<div id="gameOver">
+  <h2>Game Over</h2>
+  <p>Score: <span id="finalScore"></span></p>
+  <button onclick="location.reload()">Restart</button>
+</div>
+
+<!-- SOUNDS -->
+<audio id="typeSound" src="sounds/Type.mp3"></audio>
+<audio id="killSound" src="sounds/Kill.mp3"></audio>
+<audio id="gameOverSound" src="sounds/GameOver.mp3"></audio>
+
+<!-- FOOTER LINKS -->
+<div style="position:fixed;bottom:72px;left:0;right:0;text-align:center;font-size:13px;color:#aaa;z-index:20;">
+  <a href="privacy.html" style="color:#aaa;">Privacy Policy</a> |
+  <a href="cookies.html" style="color:#aaa;">Cookie Policy</a> |
+  <a href="contact.html" style="color:#aaa;">Contact</a>
+</div>
+
+<script>
+  // === CORE STATE ===
+  let running = false;
+  let score = 0;
+  let speed = 1;
+  let enemies = [];
+
+  const game = document.getElementById('game');
+  const input = document.getElementById('inputBox');
+  const scoreEl = document.getElementById('score');
+  const speedEl = document.getElementById('speed');
+  const gameOverBox = document.getElementById('gameOver');
+  const finalScore = document.getElementById('finalScore');
+
+  const typeSound = document.getElementById('typeSound');
+  const killSound = document.getElementById('killSound');
+  const gameOverSound = document.getElementById('gameOverSound');
+
+  function startGame() {
+    const start = document.getElementById('startScreen');
+    if (start) start.style.display = 'none';
+    running = true;
+    input.value = '';
+    input.disabled = false;
+    setTimeout(() => input.focus(), 100);
+  }
+
+  const easyWords = [
+    'cat','dog','sun','moon','book','pen','ball','fish','tree','milk',
+    'car','road','home','door','water','food','phone','game','boy','girl',
+    'red','blue','green','big','small','fast','slow','happy','sad','fun'
+  ];
+
+  function generateWord() {
+    return easyWords[Math.floor(Math.random() * easyWords.length)];
+  }
+
+  function spawnEnemy() {
+    if (!running) return;
+    const word = generateWord();
+    const div = document.createElement('div');
+    div.className = 'enemy';
+    div.textContent = word;
+    div.style.left = Math.random() * (window.innerWidth - 120) + 'px';
+    div.style.top = '0px';
+    game.appendChild(div);
+    enemies.push({ word, el: div, y: 0 });
+  }
+
+  function updateEnemies() {
+    if (!running) return;
+    enemies.forEach(e => {
+      e.y += speed;
+      e.el.style.top = e.y + 'px';
+      if (e.y > window.innerHeight - 140) endGame();
+    });
+  }
+
+  function endGame() {
+    running = false;
+    gameOverSound.play();
+    finalScore.textContent = score;
+    gameOverBox.style.display = 'flex';
+  }
+
+  input.addEventListener('input', () => {
+    if (!running) return;
+    typeSound.currentTime = 0;
+    typeSound.play();
+
+    const val = input.value.trim();
+
+    enemies.forEach(e => {
+      let html = '';
+      for (let i = 0; i < e.word.length; i++) {
+        if (i < val.length && e.word[i] === val[i]) {
+          html += `<span style="color:#00e5ff">${e.word[i]}</span>`;
+        } else {
+          html += e.word[i];
+        }
+      }
+      e.el.innerHTML = html;
+    });
+
+    enemies = enemies.filter(e => {
+      if (e.word === val) {
+        killSound.currentTime = 0;
+        killSound.play();
+        game.removeChild(e.el);
+        score += 10;
+        scoreEl.textContent = score;
+        if (score % 50 === 0) speedEl.textContent = ++speed;
+        input.value = '';
+        return false;
+      }
+      return true;
+    });
+  });
+
+  setInterval(spawnEnemy, 2000);
+
+  function loop() {
+    updateEnemies();
+    requestAnimationFrame(loop);
+  }
+  loop();
+</script>
+</body>
+</html>
